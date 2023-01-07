@@ -9,6 +9,8 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.annotation.PostConstruct;
+
 @Component
 @Log4j
 public class TelegramBot extends TelegramLongPollingBot {
@@ -16,7 +18,20 @@ public class TelegramBot extends TelegramLongPollingBot {
     private String botName;
     @Value("${bot.token}")
     private String botToken;
-//    private static final Logger log = Logger.getLogger(TelegramBot.class);
+    private UpdateController updateController;
+
+
+// В телеграм бот внедряется ссылка на UpdateController
+    public TelegramBot(UpdateController updateController) {
+        this.updateController = updateController;
+    }
+// После внедрения UpdateControllera выполняется init метод. В нём передаётся ссылка на сам телеграм бот, внутрь
+// UpdateController'а. Таким образом телеграм бот передаёт входящее сообщение в контроллер, а контроллер передаёт ответы
+// обратно в телеграм бот.
+    @PostConstruct
+    public void init() {
+        updateController.registerBot(this);
+    }
 
     @Override
     public String getBotUsername() {
@@ -30,13 +45,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        var originalMessage = update.getMessage();
-        log.debug(originalMessage.getText());
-
-        var response = new SendMessage();
-        response.setChatId(originalMessage.getChatId().toString());
-        response.setText("Hello from Bot");
-        sendAnswerMessage(response);
+        updateController.processUpdate(update);
     }
 
     public void sendAnswerMessage(SendMessage message) {
